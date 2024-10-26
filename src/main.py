@@ -1,3 +1,6 @@
+import asyncio
+from bot import HabitTrackBot
 
 if __name__ == '__main__':
-    pass
+    bot = HabitTrackBot()
+    asyncio.run(bot.run_bot())

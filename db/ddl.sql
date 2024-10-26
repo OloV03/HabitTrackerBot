@@ -19,3 +19,5 @@ create table habits.event (
     event_ts timeStamp,
     changed_ts timeStamp
 );
+CREATE SEQUENCE habits.seq_event_row_id START 1;
+CREATE SEQUENCE habits.seq_habit_id START 1;

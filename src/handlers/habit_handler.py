@@ -7,6 +7,7 @@ habit_router = Router()
 
 @habit_router.message(Command("add_habit"))
 async def add_habbit(message: types.Message):
+    """Добавление новой привычки"""
     user_id = message.from_user.id
     mes_text_arr = message.text.split(' ')
 
@@ -16,6 +17,7 @@ async def add_habbit(message: types.Message):
 
 @habit_router.message(Command("habits_list"))
 async def get_list_habits(message: types.Message):
+    """Получение списка привычек"""
     user_id = message.from_user.id
     habits_list = Api.list_user_habits(user_id=user_id)
 
@@ -26,6 +28,7 @@ async def get_list_habits(message: types.Message):
 
 @habit_router.message(Command("add_event"))
 async def add_event(message: types.Message):
+    """Добавление записи о выполнении привычки"""
     user_id = message.from_user.id
     mes_text_arr = message.text.split(' ')
     
@@ -37,3 +40,12 @@ async def add_event(message: types.Message):
     )
 
     await message.answer(text="Готово")
+
+@habit_router.message(Command("last"))
+async def last_event(message: types.Message):
+    """Последняя запись о привычке"""
+    user_id = message.from_user.id
+
+    last_event = Api.last_event(user_id, message.text.split(' ')[1])
+
+    await message.answer(text=f"Дата последней записи: {last_event}")

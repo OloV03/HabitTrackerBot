@@ -101,7 +101,7 @@ class Api:
         
         query = f"""
         insert into habits.event (row_id, habit_id, user_id, comment_txt, event_ts, changed_ts)
-        values (nextval('habits.seq_event_row_id'), {habit_id}, {user_id}, '{comment}', '{event_ts}', now());
+        values (nextval('habits.seq_event_row_id'), {habit_id}, {user_id}, '{comment}', '{event_ts}', now() at time zone 'Europe/Moscow');
         """
         insert(query=query)
 

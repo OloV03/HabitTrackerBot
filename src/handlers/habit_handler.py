@@ -10,7 +10,7 @@ from typing import List
 habit_router = Router()
 max_habit_in_page = 4
 
-def habits_inline_keyboard(habits_list: List[str], start_index: int) -> InlineKeyboardMarkup:
+def habits_inline_keyboard(habits_list: List[str], start_index: int, callback_pattern: str = "empty") -> InlineKeyboardMarkup:
     """
     Подготовленная страница кнопок с привычками
 
@@ -21,6 +21,9 @@ def habits_inline_keyboard(habits_list: List[str], start_index: int) -> InlineKe
 
     start_index: int
         Индекс, с которого начинается чтение привычек для текущей "страницы"
+
+    callback_pattern: str | None
+        Шаблон для `callback_data` кнопок
     
     Return
     ---
@@ -39,7 +42,7 @@ def habits_inline_keyboard(habits_list: List[str], start_index: int) -> InlineKe
             need_next_page = True
             break
         buttons.append(
-            InlineKeyboardButton(text=name, callback_data=f"habit_{id}")
+            InlineKeyboardButton(text=name, callback_data=f"{callback_pattern}_{id}" if callback_pattern else None)
         )
         i += 1
     keyboard_builder.row(*buttons, width=2)
@@ -60,11 +63,9 @@ def habits_inline_keyboard(habits_list: List[str], start_index: int) -> InlineKe
 async def add_habbit(message: types.Message):
     """Добавление новой привычки"""
     user_id = message.from_user.id
-    mes_text_arr = message.text.split(" ")
 
-    Api.add_habit_to_user(user_id=user_id, habit_nm=mes_text_arr[1])
+    Api.add_habit_to_user(user_id=user_id, habit_nm=message.text)
     await message.answer(text="Привычка добавлена")
-
 
 @habit_router.message(Command("habits_list"))
 async def get_list_habits(message: types.Message):
@@ -73,7 +74,7 @@ async def get_list_habits(message: types.Message):
     habits_list = Api.list_user_habits(user_id=user_id)
 
     await message.answer(
-        text="Ваши привычки", reply_markup=habits_inline_keyboard(habits_list=habits_list, start_index=0)
+        text="Ваши привычки:", reply_markup=habits_inline_keyboard(habits_list=habits_list, start_index=0)
     )
 
 @habit_router.callback_query(F.data.startswith("next_page"))
@@ -98,17 +99,25 @@ async def prev_page_callback(callback: types.CallbackQuery):
     
     await callback.message.edit_reply_markup(reply_markup=new_keyboard)
 
+@habit_router.callback_query(F.data.startswith("event_habit"))
+async def add_event_callback(callback: types.CallbackQuery):
+    """Callback для добавления записи привычки"""
+    user_id = callback.from_user.id
+    habit_id = callback.data.split('_')[-1]
+    Api.add_event(
+        user_id=user_id,
+        habit_id=habit_id
+    )
+    callback.message.delete_reply_markup()
+
+    await callback.message.edit_text("Запись добавлена")
+
 @habit_router.message(Command("add_event"))
 async def add_event(message: types.Message):
     """Добавление записи о выполнении привычки"""
     user_id = message.from_user.id
-    mes_text_arr = message.text.split(" ")
+    habits_list = Api.list_user_habits(user_id=user_id)
 
-    Api.add_event(
-        user_id=user_id,
-        habit_id=mes_text_arr[1],
-        event_ts=mes_text_arr[2],
-        comment=" ".join(mes_text_arr[3:]),
+    await message.answer(
+        text="Выберите привычку:", reply_markup=habits_inline_keyboard(habits_list=habits_list, start_index=0, callback_pattern="event_habit")
     )
-
-    await message.answer(text="Готово")

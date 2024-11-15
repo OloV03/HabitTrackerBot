@@ -74,6 +74,12 @@ class Api:
         return habits_list
 
     @staticmethod
+    def list_habits_names(user_id: int) -> List[str]:
+        habits_list = Api.list_user_habits(user_id=user_id)
+
+        return [i.habit_nm for i in habits_list]
+
+    @staticmethod
     def add_event(user_id: int, habit_id: int, event_ts: str = str(datetime.now()), comment: str = "") -> None:
         """
         Добавление записи о выполнении привычки
@@ -87,10 +93,10 @@ class Api:
             ID привычки
 
         event_ts : str
-            Время события в виде строки (default datetime.now())
+            Время события в виде строки (default=datetime.now())
 
         comment: str
-            Комментарий к записи (default '')
+            Комментарий к записи (default='')
         """
         
         query = f"""
@@ -119,7 +125,7 @@ class Api:
         join habits.habit using (habit_id)
         where
             user_id = {user_id}
-            and habit_nm = '{habit_id}'
+            and habit_id = '{habit_id}'
         order by event_ts desc
         limit 1;
         """

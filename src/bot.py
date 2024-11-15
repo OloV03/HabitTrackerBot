@@ -2,6 +2,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from config_reader import config
 from handlers.habit_handler import habit_router
+from handlers.statistic_handler import statistics_router
 
 
 class HabitTrackBot:
@@ -9,7 +10,10 @@ class HabitTrackBot:
     dp = Dispatcher()
 
     def __init__(self):
-        self.dp.include_router(habit_router)
+        self.dp.include_routers(
+            habit_router,
+            statistics_router,
+        )
 
     @dp.message(Command("start"))
     async def welcome(message: types.message):

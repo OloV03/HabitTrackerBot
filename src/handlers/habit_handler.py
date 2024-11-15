@@ -1,17 +1,66 @@
 from aiogram import Router, types
-from aiogram.filters.command import Command
-from api import Api
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.filters.command import Command
+from aiogram import F
+from api import Api
+from typing import List
+
 
 habit_router = Router()
+max_habit_in_page = 4
+
+def habits_inline_keyboard(habits_list: List[str], start_index: int) -> InlineKeyboardMarkup:
+    """
+    Подготовленная страница кнопок с привычками
+
+    Parameters
+    ---
+    habits_list: List[str]
+        Список названий привычек пользователя
+
+    start_index: int
+        Индекс, с которого начинается чтение привычек для текущей "страницы"
+    
+    Return
+    ---
+    InlineKeyboardMarkup
+        Клавиатура c названиями привычек.
+
+        - Если кнопок больше чем `max_habit_in_page` - вернется максимально возможное кол-во кнопок и кнопка `Далее`, которая обновит набор.
+        - Если есть привычки на предыдущих страницах (`start_index` > 0) - будет добавлена кнопка `Назад`.
+    """
+    keyboard_builder = InlineKeyboardBuilder()
+    buttons =[]
+    i = 0
+    need_next_page = False
+    for id, name in habits_list[start_index:]:
+        if i >= max_habit_in_page:
+            need_next_page = True
+            break
+        buttons.append(
+            InlineKeyboardButton(text=name, callback_data=f"habit_{id}")
+        )
+        i += 1
+    keyboard_builder.row(*buttons, width=2)
+
+    last_row_buttons = []
+    if start_index > 0:
+        last_row_buttons.append(InlineKeyboardButton(text="Назад", callback_data=f'prev_page_{start_index - max_habit_in_page - 1}'))
+
+    if need_next_page:
+        last_row_buttons.append(InlineKeyboardButton(text="Далее", callback_data=f'next_page_{start_index + i + 1}'))
+
+    keyboard_builder.row(*last_row_buttons)
+
+    return keyboard_builder.as_markup()
 
 
 @habit_router.message(Command("add_habit"))
 async def add_habbit(message: types.Message):
     """Добавление новой привычки"""
     user_id = message.from_user.id
-    mes_text_arr = message.text.split(' ')
+    mes_text_arr = message.text.split(" ")
 
     Api.add_habit_to_user(user_id=user_id, habit_nm=mes_text_arr[1])
     await message.answer(text="Привычка добавлена")
@@ -23,25 +72,43 @@ async def get_list_habits(message: types.Message):
     user_id = message.from_user.id
     habits_list = Api.list_user_habits(user_id=user_id)
 
-    keyboard_builder = InlineKeyboardBuilder()
-    for id, name in habits_list:
-        keyboard_builder.add(InlineKeyboardButton(text=name, callback_data=f'habit_{id}'))
+    await message.answer(
+        text="Ваши привычки", reply_markup=habits_inline_keyboard(habits_list=habits_list, start_index=0)
+    )
 
-    await message.answer(text="Список привычек", reply_markup=keyboard_builder.as_markup())
+@habit_router.callback_query(F.data.startswith("next_page"))
+async def next_page_callback(callback: types.CallbackQuery):
+    """Callback для кнопки "Далее" """
+    start_index = int(callback.data.title().lower().split('_')[-1])
+    user_id=callback.from_user.id
+    
+    habits_list = Api.list_user_habits(user_id=user_id)
+    new_keyboard = habits_inline_keyboard(habits_list=habits_list, start_index=start_index)
+    
+    await callback.message.edit_reply_markup(reply_markup=new_keyboard)
+
+@habit_router.callback_query(F.data.startswith("prev_page"))
+async def prev_page_callback(callback: types.CallbackQuery):
+    """Callback для кнопки "Назад" """
+    start_index = int(callback.data.title().lower().split('_')[-1])
+    user_id=callback.from_user.id
+    
+    habits_list = Api.list_user_habits(user_id=user_id)
+    new_keyboard = habits_inline_keyboard(habits_list=habits_list, start_index=start_index)
+    
+    await callback.message.edit_reply_markup(reply_markup=new_keyboard)
 
 @habit_router.message(Command("add_event"))
 async def add_event(message: types.Message):
     """Добавление записи о выполнении привычки"""
     user_id = message.from_user.id
-    mes_text_arr = message.text.split(' ')
-    
+    mes_text_arr = message.text.split(" ")
+
     Api.add_event(
         user_id=user_id,
         habit_id=mes_text_arr[1],
         event_ts=mes_text_arr[2],
-        comment=' '.join(mes_text_arr[3:])
+        comment=" ".join(mes_text_arr[3:]),
     )
 
     await message.answer(text="Готово")
-
-
